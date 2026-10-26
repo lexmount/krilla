@@ -38,6 +38,7 @@ hayro-write = { workspace = true, optional = true }
 image-webp = { workspace = true, optional = true }
 imagesize = { workspace = true, optional = true }
 indexmap = { workspace = true }
+kurbo = { workspace = true }
 pdf-writer = { workspace = true }
 rayon = { workspace = true, optional = true }
 rustc-hash =  { workspace = true }
@@ -53,5 +54,6 @@ png = { workspace = true, optional = true }
 zune-jpeg = { workspace = true, optional = true }
 
 [dev-dependencies]
+lopdf = { workspace = true }
 parley = { workspace = true }
 pretty_assertions = { workspace = true }

@@ -387,6 +387,46 @@ impl<'a> Surface<'a> {
         }
     }
 
+    /// Draw positioned glyphs with synthetic expansion and an explicit paint order.
+    ///
+    /// Expansion is measured in local surface units at `font_size`, before the
+    /// surface transform, and does not change advances or offsets. Fill and stroke
+    /// follow the same expanded monochrome contour; the stroke width is unchanged.
+    /// Contours and solid-paint graphics are cached across pages in this document.
+    /// Gradient and pattern coordinates remain in surface space.
+    ///
+    /// When `outlined` is false, exactly one native text representation retains
+    /// the glyph-to-Unicode mapping. A visible native fill carries it when possible;
+    /// otherwise krilla adds an invisible native copy. When true, no searchable
+    /// text is emitted. The active fill and stroke are restored afterwards.
+    ///
+    /// Color glyphs retain their existing rendering fallback; expansion does not
+    /// reinterpret their layers or images. Invalid font sizes draw nothing.
+    #[allow(clippy::too_many_arguments)]
+    pub fn draw_expanded_glyphs(
+        &mut self,
+        start: Point,
+        glyphs: &[impl Glyph],
+        font: Font,
+        text: &str,
+        font_size: f32,
+        expansion: crate::text::GlyphExpansion,
+        paint_order: crate::text::GlyphPaintOrder,
+        outlined: bool,
+    ) {
+        crate::text::expanded::draw(
+            self,
+            start,
+            glyphs,
+            font,
+            text,
+            font_size,
+            expansion,
+            paint_order,
+            outlined,
+        );
+    }
+
     /// Draw some text using the currently active fill and/or stroke.
     ///
     /// This is a high-level method which allows you to just provide some text, which will

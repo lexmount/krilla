@@ -19,6 +19,7 @@ use rustc_hash::FxHashMap;
 use crate::text::cid::CIDFont;
 use crate::text::type3::{ColoredGlyph, Type3Font, Type3FontMapper, Type3ID};
 pub(crate) mod cid;
+pub(crate) mod expanded;
 pub(crate) mod font;
 pub(crate) mod glyph;
 pub(crate) mod group;
@@ -26,6 +27,7 @@ pub(crate) mod group;
 pub(crate) mod shape;
 pub(crate) mod type3;
 
+pub use expanded::{GlyphExpansion, GlyphPaintOrder};
 pub use font::*;
 pub use glyph::*;
 #[cfg(feature = "simple-text")]

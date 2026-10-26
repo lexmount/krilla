@@ -251,6 +251,8 @@ impl MaybeDeviceColorSpace {
 /// - Annotations used in the document.
 ///   etc.
 pub(crate) struct SerializeContext {
+    /// Expanded monochrome contours and graphics, shared across this document.
+    pub(crate) expanded_glyphs: crate::text::expanded::ExpandedGlyphCache,
     /// The ref of the page tree.
     page_tree_ref: Ref,
     /// PDF 2.0 namespaces.
@@ -305,6 +307,7 @@ impl SerializeContext {
         };
 
         Self {
+            expanded_glyphs: Default::default(),
             cached_mappings: HashMap::new(),
             pdf2_ns,
             global_objects: GlobalObjects::default(),
