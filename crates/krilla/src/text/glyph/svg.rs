@@ -8,8 +8,8 @@ use crate::text::GlyphId;
 pub(crate) fn has_svg_data(font: &Font, glyph: GlyphId) -> bool {
     font.font_ref()
         .svg()
-        .map(|svg_table| svg_table.glyph_data(glyph.to_skrifa()).is_ok())
-        .is_ok()
+        .and_then(|svg_table| svg_table.glyph_data(glyph.to_skrifa()))
+        .is_ok_and(|data| data.is_some())
 }
 
 /// Draw an SVG-based glyph on a surface.
@@ -37,4 +37,19 @@ pub(crate) fn draw_glyph(
     surface.set_stroke(old_stroke);
 
     result
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::util::test_utils::ASSETS_PATH;
+    use std::sync::Arc;
+
+    #[test]
+    fn svg_data_only_applies_to_covered_glyphs() {
+        let data = std::fs::read(ASSETS_PATH.join("fonts/SVG_extra.ttf")).unwrap();
+        let font = Font::new(Arc::new(data).into(), 0).unwrap();
+        assert!(has_svg_data(&font, GlyphId::new(1)));
+        assert!(!has_svg_data(&font, GlyphId::new(0)));
+    }
 }
