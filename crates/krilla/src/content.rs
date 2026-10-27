@@ -541,6 +541,39 @@ impl ContentBuilder {
         self.graphics_states.restore_state();
     }
 
+    #[allow(clippy::too_many_arguments)]
+    pub(crate) fn draw_invisible_glyphs(
+        &mut self,
+        start: Point,
+        sc: &mut SerializeContext,
+        chunk_container: &mut ChunkContainer,
+        glyphs: &[impl Glyph],
+        font: Font,
+        text: &str,
+        font_size: f32,
+    ) {
+        let bbox = self
+            .bbox_important
+            .then(|| get_glyphs_bbox(glyphs, start.x, start.y, font_size, font.clone()));
+        self.fill_stroke_glyph_run(
+            start.x,
+            start.y,
+            sc,
+            chunk_container,
+            TextRenderingMode::Invisible,
+            |sb, _, _| {
+                if let Some(bbox) = bbox {
+                    sb.expand_bbox(bbox);
+                }
+            },
+            glyphs,
+            font,
+            rgb::Color::black(),
+            text,
+            font_size,
+        );
+    }
+
     /// Encode a successive sequence of glyphs that share the same properties and
     /// can be encoded with one text showing operator.
     #[allow(clippy::too_many_arguments)]
@@ -843,7 +876,10 @@ impl ContentBuilder {
             .get_from_identifier(glyph_group.font_identifier.clone())
             .unwrap();
 
-        if fill_render_mode == TextRenderingMode::Fill || pdf_font.force_fill() {
+        if fill_render_mode == TextRenderingMode::Invisible {
+            self.content
+                .set_text_rendering_mode(TextRenderingMode::Invisible);
+        } else if fill_render_mode == TextRenderingMode::Fill || pdf_font.force_fill() {
             self.content
                 .set_text_rendering_mode(TextRenderingMode::Fill);
         } else if fill_render_mode == TextRenderingMode::FillStroke {

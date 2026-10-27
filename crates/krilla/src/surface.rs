@@ -387,6 +387,29 @@ impl<'a> Surface<'a> {
         }
     }
 
+    /// Embed a sequence of glyphs as invisible, searchable text (PDF `3 Tr`).
+    ///
+    /// The active fill and stroke are ignored. The glyphs keep their Unicode
+    /// mappings without painting their outlines or color artwork.
+    pub fn draw_invisible_glyphs(
+        &mut self,
+        start: Point,
+        glyphs: &[impl Glyph],
+        font: Font,
+        text: &str,
+        font_size: f32,
+    ) {
+        self.bd.get_mut().draw_invisible_glyphs(
+            start,
+            self.sc,
+            self.chunk_container,
+            glyphs,
+            font,
+            text,
+            font_size,
+        );
+    }
+
     /// Draw some text using the currently active fill and/or stroke.
     ///
     /// This is a high-level method which allows you to just provide some text, which will
@@ -682,4 +705,83 @@ pub(crate) enum PushInstruction {
     BlendMode,
     Mask(Box<Mask>),
     Isolated,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::text::{GlyphId, KrillaGlyph};
+    use crate::util::test_utils::{ASSETS_PATH, NOTO_COLOR_EMOJI_COLR};
+    use crate::{Document, SerializeSettings};
+    use skrifa::MetadataProvider;
+    use std::sync::Arc;
+
+    fn semantic_pdf(font: Font, visible_first: Option<bool>) -> String {
+        let id = font.font_ref().charmap().map('😀').unwrap().to_u32();
+        let mut document = Document::new_with(SerializeSettings {
+            pretty: true,
+            compress_content_streams: false,
+            ..Default::default()
+        });
+        let mut page = document.start_page();
+        let mut surface = page.surface();
+        surface.set_fill(Some(Fill::default()));
+        surface.set_stroke(Some(Stroke::default()));
+        let glyphs = [KrillaGlyph {
+            glyph_id: GlyphId::new(id),
+            text_range: 0.."hidden".len(),
+            x_advance: 1.0,
+            y_advance: 0.0,
+            x_offset: 0.0,
+            y_offset: 0.0,
+            location: None,
+        }];
+        let start = Point::from_xy(20.0, 50.0);
+        if visible_first == Some(true) {
+            surface.draw_glyphs(start, &glyphs, font.clone(), "hidden", 30.0, false);
+        }
+        surface.draw_invisible_glyphs(start, &glyphs, font.clone(), "hidden", 30.0);
+        if visible_first == Some(false) {
+            surface.draw_glyphs(start, &glyphs, font, "hidden", 30.0, false);
+        }
+        surface.finish();
+        page.finish();
+        String::from_utf8_lossy(&document.finish().unwrap()).into_owned()
+    }
+
+    #[test]
+    fn invisible_colr_glyphs_keep_invisible_mode_and_unicode() {
+        let font = Font::new(NOTO_COLOR_EMOJI_COLR.clone(), 0).unwrap();
+        let pdf = semantic_pdf(font, None);
+        assert!(pdf.contains("3 Tr"));
+        assert!(pdf.contains("/Subtype /Type3"));
+        assert!(pdf.contains("00680069006400640065006E"));
+    }
+
+    #[test]
+    fn invisible_bitmap_only_fonts_keep_invisible_mode_and_unicode() {
+        let data = std::fs::read(ASSETS_PATH.join("fonts/NotoColorEmoji.CBDT.subset.ttf")).unwrap();
+        let font = Font::new(Arc::new(data).into(), 0).unwrap();
+        let pdf = semantic_pdf(font, None);
+        assert!(pdf.contains("3 Tr"));
+        assert!(pdf.contains("/Subtype /Type3"));
+        assert!(pdf.contains("00680069006400640065006E"));
+    }
+
+    #[test]
+    fn visible_and_invisible_color_glyphs_reuse_their_font() {
+        for visible_first in [false, true] {
+            let font = Font::new(NOTO_COLOR_EMOJI_COLR.clone(), 0).unwrap();
+            let pdf = semantic_pdf(font, Some(visible_first));
+            assert!(pdf.contains("3 Tr"));
+            assert!(pdf.contains("0 Tr"));
+            assert!(!pdf.contains("/Subtype /Type0"));
+            assert!(pdf.contains("/Subtype /Type3"));
+            assert_eq!(
+                pdf.matches(" Do").count(),
+                1,
+                "only visible text uses the artwork"
+            );
+        }
+    }
 }
